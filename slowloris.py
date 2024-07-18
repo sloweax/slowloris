@@ -71,6 +71,8 @@ async def slowloris_write(writer, data, rate):
 @slowloris_timeout(args.timeout)
 async def slowloris_read(reader, rate, n=-1):
     data = b""
+    if n == 0:
+        return data
     while True:
         d = await reader.read(1)
         if len(d) == 0:
