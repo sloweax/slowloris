@@ -11,7 +11,7 @@ options:
                         add custom header
   --workers WORKERS     default: 8
   --interval SECONDS    interval between requests default: 1
-  --timeout SECONDS     default: 15
+  --timeout SECONDS     connection timeout default: 15
   --read-rate SECONDS   bytes/second default: 0.05
   --write-rate SECONDS  bytes/second default: 0.05
   -x PROXY, --proxy PROXY
