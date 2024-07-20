@@ -13,12 +13,10 @@ pip3 install -r requirements.txt
 
 ## Usage
 ```
-usage: slowloris.py [-h] [--workers WORKERS] [--interval SECONDS] [--timeout SECONDS] [--read-rate SECONDS] [--write-rate SECONDS] [-H HEADER] [-X REQUEST] [-d DATA] [-x PROXY]
-                    [--proxy-file FILE]
-                    url
+usage: url [OPTIONS...]
 
 positional arguments:
-  url
+  url                   if a keyword is present in the url, it will be replaced with a string. more information is shown in the keywords section
 
 options:
   -h, --help            show this help message and exit
@@ -29,10 +27,21 @@ options:
   --write-rate SECONDS  bytes/second (default: 0.05)
   -H HEADER, --header HEADER
                         add custom header
+  -Hn HEADER N, --header-n HEADER N
+                        send custom header N times. if a keyword is present in the header, it will be replaced with a string. more information is shown in the keywords section
   -X REQUEST, --request REQUEST
                         request method (default: GET)
   -d DATA, --data DATA
   -x PROXY, --proxy PROXY
                         (example: socks5://...)
-  --proxy-file FILE     load all line separated proxies from FILE
+  -xf FILE, --proxy-file FILE
+                        load all line separated proxies from FILE
+
+keywords:
+  %RAND%                replaced by a random string of letters+numbers with length 16-32
+  %RAND-S%              replaced by a random string of letters+numbers with length 2-8
+  %RAND-B%              replaced by a random string of letters+numbers with length 128-256
+  %RANDS%               replaced by a random string of letters with length 16-32
+  %RANDS-S%             replaced by a random string of letters with length 2-8
+  %RANDS-B%             replaced by a random string of letters with length 128-256
 ```
