@@ -163,7 +163,11 @@ async def slowloris_attack(host, port, read_rate, write_rate, https, path, heade
             writer.close()
             raise Exception('Could not get response headers')
 
+        status_text = b"?"
         response_headers = response_headers.strip().split(b'\r\n')
+        if len(response_headers) > 1:
+            status_text = response_headers[0].split()[-1].strip()
+        status_text = status_text.decode()
         length = 0
         for rh in response_headers:
             if rh.lower().strip().startswith(b'content-length'):
@@ -172,7 +176,7 @@ async def slowloris_attack(host, port, read_rate, write_rate, https, path, heade
         if length > 0:
             await slowloris_read(reader, read_rate, n=length)
 
-        print(f'Got http response in {time.time()-time_read_start} seconds')
+        print(f'Got http response {status_text} in {time.time()-time_read_start} seconds')
 
         await asyncio.sleep(args.interval)
 
