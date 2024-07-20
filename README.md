@@ -1,6 +1,8 @@
 ## Usage
 ```
-usage: slowloris.py [-h] [--workers WORKERS] [--interval SECONDS] [--timeout SECONDS] [--read-rate SECONDS] [--write-rate SECONDS] [-H HEADER] [-X REQUEST] [-d DATA] [-x PROXY] url
+usage: slowloris.py [-h] [--workers WORKERS] [--interval SECONDS] [--timeout SECONDS] [--read-rate SECONDS] [--write-rate SECONDS] [-H HEADER] [-X REQUEST] [-d DATA] [-x PROXY]
+                    [--proxy-file FILE]
+                    url
 
 positional arguments:
   url
@@ -18,4 +20,6 @@ options:
                         request method (default: GET)
   -d DATA, --data DATA
   -x PROXY, --proxy PROXY
+                        (example: socks5://...)
+  --proxy-file FILE     load all line separated proxies from FILE
 ```
