@@ -1,3 +1,16 @@
+## Install
+```
+git clone https://github.com/sloweax/slowloris
+cd slowloris
+
+### you might need to create a venv ###
+# python3 -m venv path/to/venv        #
+# . path/to/venv/bin/activate         #
+#######################################
+
+pip3 install -r requirements.txt
+```
+
 ## Usage
 ```
 usage: slowloris.py [-h] [--workers WORKERS] [--interval SECONDS] [--timeout SECONDS] [--read-rate SECONDS] [--write-rate SECONDS] [-H HEADER] [-X REQUEST] [-d DATA] [-x PROXY]
