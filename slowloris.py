@@ -33,7 +33,7 @@ parser.add_argument('--write-rate', type=float, default=0.05, metavar='SECONDS',
 parser.add_argument('-H', '--header', action='append', default=[], help='add custom header')
 parser.add_argument('-Hn', '--header-n', action='append', default=[], help='send custom header N times. if a keyword is present in the header, it will be replaced with a string. more information is shown in the keywords section', nargs=2, metavar=('HEADER', 'N'))
 parser.add_argument('-X', '--request', default='GET', help='request method (default: %(default)s)')
-parser.add_argument('-d', '--data', action='append', default=[])
+parser.add_argument('-d', '--data', action='append', default=[], help='if a keyword is present in data, it will be replaced with a string. more information is shown in the keywords section')
 parser.add_argument('-x', '--proxy', action='append', default=[], help="(example: socks5://...)")
 parser.add_argument('-xf', '--proxy-file', metavar="FILE", help="load all line separated proxies from FILE")
 
@@ -175,7 +175,7 @@ async def slowloris_attack(host, port, read_rate, write_rate, https, path, heade
     headers['Host'] = host
     headers['User-Agent'] = random.choice(USER_AGENTS)
 
-    raw_data = '&'.join(data_list).encode()
+    raw_data = '&'.join([fuzz(d) for d in data_list]).encode()
 
     for h in headers_list:
         data = h.split(':')

@@ -31,7 +31,7 @@ options:
                         send custom header N times. if a keyword is present in the header, it will be replaced with a string. more information is shown in the keywords section
   -X REQUEST, --request REQUEST
                         request method (default: GET)
-  -d DATA, --data DATA
+  -d DATA, --data DATA  if a keyword is present in data, it will be replaced with a string. more information is shown in the keywords section
   -x PROXY, --proxy PROXY
                         (example: socks5://...)
   -xf FILE, --proxy-file FILE
