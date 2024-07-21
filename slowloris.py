@@ -125,7 +125,6 @@ async def slowloris_write(writer, data, rate):
             writer.write(char.encode())
         else:
             writer.write(char.to_bytes())
-        await writer.drain()
         await asyncio.sleep(rate)
 
 async def slowloris_read(reader, rate, n=-1):
@@ -225,6 +224,8 @@ async def slowloris_attack(host, port, read_rate, write_rate, https, path, heade
 
         if len(raw_data) > 0:
             await slowloris_write(writer, raw_data, write_rate)
+
+        await writer.drain()
 
         print(f'Sent http request in {time.time()-time_write_start} seconds')
 
