@@ -113,6 +113,13 @@ def slowloris_timeout(timeout):
     return decorate
 
 async def slowloris_write(writer, data, rate):
+    if rate == 0:
+        if type(data) == str:
+            writer.write(data.encode())
+        else:
+            writer.write(data)
+        return
+
     for char in data:
         if type(char) == str:
             writer.write(char.encode())
@@ -122,6 +129,9 @@ async def slowloris_write(writer, data, rate):
         await asyncio.sleep(rate)
 
 async def slowloris_read(reader, rate, n=-1):
+    if rate == 0:
+        return await reader.read(n)
+
     data = b""
     if n == 0:
         return data
@@ -136,6 +146,9 @@ async def slowloris_read(reader, rate, n=-1):
         await asyncio.sleep(rate)
 
 async def slowloris_readuntil(reader, sep, rate):
+    if rate == 0:
+        return await reader.readuntil(sep)
+
     data = b''
     while True:
         if data.endswith(sep):
