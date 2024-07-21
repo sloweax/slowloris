@@ -128,12 +128,14 @@ async def slowloris_write(writer, data, rate):
         await asyncio.sleep(rate)
 
 async def slowloris_read(reader, rate, n=-1):
-    if rate == 0:
-        return await reader.read(n)
 
     data = b""
     if n == 0:
         return data
+
+    if rate == 0:
+        return await reader.read(n)
+
     while True:
         d = await reader.read(1)
         if len(d) == 0:
