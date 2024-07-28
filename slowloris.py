@@ -59,7 +59,7 @@ for min,max,suffix in [(16,32,''), (2,8,'-S'), (128,256,'-B')]:
 for min,max,suffix in [(16,32,''), (2,8,'-S'), (128,256,'-B')]:
     kw = f'%RANDS{suffix}%'
     fuzz_kw_group.add_argument(kw, nargs='?', help=f'replaced by a random string of letters with length {min}-{max}')
-    FUZZ_KW[kw] = eval(f'lambda f: randstr(string.ascii_letters+string.digits, {min}, {max})')
+    FUZZ_KW[kw] = eval(f'lambda f: randstr(string.ascii_letters, {min}, {max})')
 
 args = parser.parse_args()
 
